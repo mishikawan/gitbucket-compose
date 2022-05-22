@@ -1,0 +1,48 @@
+version: "3"
+services:
+  proxy:
+    image: httpd
+    volumes:
+     - ./httpd.conf:/usr/local/apache2/conf/httpd.conf
+    ports:
+      - 80:80
+  gitbucket:
+    image: gitbucket/gitbucket
+    restart: always
+    expose:
+      - 8080
+    ports:
+      - 29418:29418
+    volumes:
+      - ./gitbucket:/gitbucket
+    command: ["sh", "-c", "java -jar /opt/gitbucket.war"]
+  dind:
+    image: docker:dind
+    privileged: true
+    environment:
+      DOCKER_TLS_CERTDIR: /certs
+    volumes:
+      - ./jenkins-docker-certs:/certs/client
+      - ./jenkins-data:/var/jenkins_home
+    expose:
+      - 2376
+  jenkins:
+    image: jenkins/jenkins:lts
+    environment:
+      DOCKER_HOST: "tcp://dind:2376"
+      DOCKER_CERT_PATH: /certs/client
+      DOCKER_TLS_VERIFY: 1
+    expose:
+      - 8080
+      - 50000
+    ports:
+      - 8888:8080
+      - 50000:50000
+    volumes:
+      - ./jenkins-docker-certs:/certs/client:ro
+      - ./jenkins-data:/var/jenkins_home
+  mattermost:
+    image: mattermost/platform:latest
+    ports:
+      - 8065:8065
+
